@@ -5,9 +5,22 @@ const reviewModel = require('./models/review');
 const userModel = require('./models/user');
 const app = express();
 
-app.get('/businesses', async (request, response) => {
+app.get('/find_businesses', async (request, response) => {
   const businesses = await businessModel.find({
     name: request.query.name,
+    city: request.query.city
+  });
+  // console.log(businesses);
+  try {
+    response.send(businesses);
+  } catch (error) {
+    response.status(500).send(error);
+  }
+});
+
+app.get('/find_rec_businesses', async (request, response) => {
+  const businesses = await businessModel.find({
+    business_ids: request.query.name,
     city: request.query.city
   });
   // console.log(businesses);
@@ -68,7 +81,7 @@ app.get('/reviews_and_users', async (request, response) => {
 
 */
 
-app.get('/reviews_and_users', async (request, response) => {
+app.get('/find_user_ids', async (request, response) => {
   const matchId = request.query.business_id;
   const user_ids = await businessModel.aggregate([
     { $match: { business_id: matchId } },
@@ -114,35 +127,37 @@ app.get('/reviews_and_users', async (request, response) => {
   }
 });
 
-app.get('/get_recs', async (request, response) => {
-  const newCity = request.query.city;
+app.get('/find_rec_ids', async (request, response) => {
   const users = request.query.users.split(',');
-  console.log(Object.prototype.toString.call(users));
+  console.log(users[0]);
+  console.log(users[1]);
   console.log('running get_recs');
-  const recs = await businessModel.aggregate([
+  const recs = await reviewModel.aggregate([
     {
       $match: {
-        $and: [{ city: newCity }, { categories: { $regex: 'Restaurant' } }]
+        $and: [{ user_id: { $in: users } }, { stars: { $gt: 3 } }]
       }
     },
     {
-      $lookup: {
-        from: 'reviews',
-        localField: 'business_id',
-        foreignField: 'business_id',
-        as: 'review_info'
+      $group: {
+        _id: '$business_id',
+        count: { $sum: 1 }
       }
     },
-    { $unwind: '$review_info' },
-    {
-      $match: {
-        $and: [
-          { 'review_info.user_id': { $in: users } },
-          { 'review_info.stars': { $gt: 3 } }
-        ]
-      }
-    },
-    {
+    { $sort: { count: -1 } }
+  ]);
+  console.log(recs);
+  try {
+    response.send(recs);
+  } catch (error) {
+    response.status(500).send(error);
+  }
+});
+
+module.exports = app;
+
+/*
+ {
       $group: {
         _id: '$business_id',
         business_id: { $first: '$business_id' },
@@ -163,18 +178,9 @@ app.get('/get_recs', async (request, response) => {
       }
     },
     { $sort: { count: -1 } }
-  ]);
-  console.log(recs);
-  try {
-    response.send(recs);
-  } catch (error) {
-    response.status(500).send(error);
-  }
-});
 
-module.exports = app;
 
-/*
+
 db.businesses.aggregate([{$group: {_id: '$city', count: {$sum : 1}}},{$sort:{count:-1}}])
 [
   { _id: 'Philadelphia', count: 14569 },
