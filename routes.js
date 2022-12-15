@@ -19,67 +19,22 @@ app.get('/find_businesses', async (request, response) => {
 });
 
 app.get('/find_rec_businesses', async (request, response) => {
-  const businesses = await businessModel.find({
-    business_ids: request.query.name,
-    city: request.query.city
-  });
+  const ids = request.query.business_ids.split(',');
+  const business_recs = await businessModel.aggregate([
+    {
+      $match: {
+        $and: [{ business_id: { $in: ids } }, { city: request.query.city }]
+      }
+    },
+    { $limit: 20 }
+  ]);
   // console.log(businesses);
   try {
-    response.send(businesses);
+    response.send(business_recs);
   } catch (error) {
     response.status(500).send(error);
   }
 });
-
-/*
-app.get('/reviews_and_users', async (request, response) => {
-  const matchId = request.query.business_id;
-  const user_ids = await reviewModel.aggregate([
-    { $lookup: {
-      from: 'businesses',
-      let: { business_id: 'business_id'},
-      pipeline = [
-        { $match: { business_id: matchId } },
-        {
-          $lookup: {
-            from: 'reviews',
-            localField: 'business_id',
-            foreignField: 'business_id',
-            as: 'review_info'
-          }
-        },
-        { $unwind: '$review_info' },
-        { $match: { 'review_info.stars': { $gt: 3 } } },
-        {
-          $group: {
-            _id: null,
-            data: {
-              $push: '$review_info.user_id'
-            }
-          }
-        },
-        {
-          $project: {
-            _id: 0,
-            data: {
-              $reduce: {
-                input: '$data',
-                initialValue: [],
-                in: {
-                  $concatArrays: ['$$value', ['$$this']]
-                }
-              }
-            }
-          }
-        }
-      ],
-      as: 'user_ids'
-    },
-  }
-
-  ]);
-
-*/
 
 app.get('/find_user_ids', async (request, response) => {
   const matchId = request.query.business_id;
@@ -129,13 +84,11 @@ app.get('/find_user_ids', async (request, response) => {
 
 app.get('/find_rec_ids', async (request, response) => {
   const users = request.query.users.split(',');
-  console.log(users[0]);
-  console.log(users[1]);
   console.log('running get_recs');
   const recs = await reviewModel.aggregate([
     {
       $match: {
-        $and: [{ user_id: { $in: users } }, { stars: { $gt: 3 } }]
+        $and: [{ user_id: { $in: users } }, { stars: { $gt: 4 } }]
       }
     },
     {

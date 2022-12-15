@@ -4,9 +4,10 @@ const mongoose = require('mongoose');
 const Router = require('./routes');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
+// const http = require('http');
 mongoose.connect('mongodb://localhost:27017/yelper-helper', {
   useNewUrlParser: true
   // useFindAndModify: false,
@@ -24,6 +25,8 @@ app.use(Router);
 app.listen(3001, () => {
   console.log('Server is running at port 3001');
 });
+
+// TO START: node --max-http-header-size=80000 server.js
 
 /*
 app.use(express.json());
