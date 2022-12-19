@@ -94,10 +94,11 @@ app.get('/find_rec_ids', async (request, response) => {
     {
       $group: {
         _id: '$business_id',
+        stars: '$stars',
         count: { $sum: 1 }
       }
     },
-    { $sort: { count: -1 } }
+    { $sort: { count: -1, stars: 1 } }
   ]);
   console.log(recs);
   try {
